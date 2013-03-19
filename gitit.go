@@ -35,6 +35,9 @@ func IdToNum(id string) int {
 }
 
 func FormatId(id string) string {
+	if id == "master" {
+		return id
+	}
 	return NumToId(IdToNum(id))
 }
 
@@ -43,6 +46,9 @@ func (it *GitIt) IssueFilename() string {
 }
 
 func (it *GitIt) IdToBranch(id string) string {
+	if id == "master" {
+		return id
+	}
 	id = FormatId(id)
 	if id == "" {
 		return ""
@@ -51,6 +57,9 @@ func (it *GitIt) IdToBranch(id string) string {
 }
 
 func (it *GitIt) BranchToId(branch string) string {
+	if branch == "master" {
+		return branch
+	}
 	if strings.HasPrefix(branch, it.branchPath) {
 		return branch[len(it.branchPath):]
 	}
@@ -62,8 +71,8 @@ func (it *GitIt) IssueIds() []string {
 	issueIds := []string{}
 	branches, _ := repo.Branches(it.branchPath)
 	for _, branch := range branches {
-		if strings.HasPrefix(branch, it.branchPath) {
-			id := branch[len(it.branchPath):]
+		id := it.BranchToId(branch)
+		if id != "master" && id != "" {
 			issueIds = append(issueIds, id)
 		}
 	}

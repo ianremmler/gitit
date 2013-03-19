@@ -10,18 +10,34 @@ import (
 	"strings"
 )
 
+const usage = `it usage
+
+it                       Show status of current issue
+it init                  Initialize new issue tracker
+it new                   Create new issue
+it list                  List issues
+it show [<id>]           Show issue
+it open <id>             Open issue
+it save                  Save issue
+it cancel                Cancel any pending changes and close issue
+it edit [<id>]           Edit issue
+it find [<key> [<val>]]  Find issues with given key and value
+it blame [<id>]          Show 'git blame' for issue
+it edit [<id>]           Edit issue`
+
 func main() {
 	log.SetFlags(0)
-	log.SetPrefix(os.Args[0] + ": ")
-
-	if len(os.Args) < 2 {
-		log.Fatalln("You must specify a command")
-	}
+	log.SetPrefix("it: ")
 
 	it := gitit.New()
 
-	cmd := strings.ToLower(os.Args[1])
+	cmd := ""
+	if len(os.Args) >= 2 {
+		cmd = strings.ToLower(os.Args[1])
+	}
 	switch cmd {
+	case "", "-h", "-help", "--help", "help", "usage":
+		fmt.Println(usage)
 	case "init":
 		it.Init()
 	case "new":
@@ -32,10 +48,7 @@ func main() {
 		fmt.Println(idStr(it, id))
 	case "list":
 		for _, id := range it.IssueIds() {
-			status := it.Field(id, "status")
-			summary := it.Field(id, "summary")
-			priority := it.Field(id, "priority")
-			fmt.Printf("%s %-8s %-8s %s\n", id, status, priority, summary)
+			fmt.Println(issueStatus(it, id))
 		}
 	case "show":
 		id := ""
@@ -60,6 +73,8 @@ func main() {
 		key, val := "", ""
 		if len(os.Args) > 2 {
 			key = os.Args[2]
+		}
+		if len(os.Args) > 3 {
 			val = os.Args[3]
 		}
 		matches := it.MatchingIssues(key, val)
@@ -90,11 +105,27 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-	case "cur":
-		fmt.Println(idStr(it, ""))
+	case "status":
+		id := ""
+		if len(os.Args) > 2 {
+			id = os.Args[2]
+		} else {
+		    id, _ = it.CurIssue()
+		}
+		if id != "" {
+			fmt.Println(issueStatus(it, id))
+		}
 	default:
 		log.Fatalln(cmd + " is not a valid command")
 	}
+}
+
+func issueStatus(it *gitit.GitIt, id string) string {
+	id = gitit.FormatId(id)
+	status := it.Field(id, "status")
+	summary := it.Field(id, "summary")
+	priority := it.Field(id, "priority")
+	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
 }
 
 func idStr(it *gitit.GitIt, id string) string {
