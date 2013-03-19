@@ -38,51 +38,51 @@ func FormatId(id string) string {
 	return NumToId(IdToNum(id))
 }
 
-func (g *GitIt) IssueFilename() string {
-	return g.issueFilename
+func (it *GitIt) IssueFilename() string {
+	return it.issueFilename
 }
 
-func (g *GitIt) IdToBranch(id string) string {
+func (it *GitIt) IdToBranch(id string) string {
 	id = FormatId(id)
 	if id == "" {
 		return ""
 	}
-	return g.branchPath + id
+	return it.branchPath + id
 }
 
-func (g *GitIt) BranchToId(branch string) string {
-	if strings.HasPrefix(branch, g.branchPath) {
-		return branch[len(g.branchPath):]
+func (it *GitIt) BranchToId(branch string) string {
+	if strings.HasPrefix(branch, it.branchPath) {
+		return branch[len(it.branchPath):]
 	}
 	return ""
 }
 
-func (g *GitIt) IssueIds() []string {
+func (it *GitIt) IssueIds() []string {
 	repo := gitgo.New()
 	issueIds := []string{}
-	branches, _ := repo.Branches(g.branchPath)
+	branches, _ := repo.Branches(it.branchPath)
 	for _, branch := range branches {
-		if strings.HasPrefix(branch, g.branchPath) {
-			id := branch[len(g.branchPath):]
+		if strings.HasPrefix(branch, it.branchPath) {
+			id := branch[len(it.branchPath):]
 			issueIds = append(issueIds, id)
 		}
 	}
 	return issueIds
 }
 
-func (g *GitIt) Init() error {
+func (it *GitIt) Init() error {
 	repo := gitgo.New()
 	_, err := repo.Init()
 	if err != nil {
 		return err
 	}
-	issueFile, err := os.Create(g.issueFilename)
+	issueFile, err := os.Create(it.issueFilename)
 	if err != nil {
 		return err
 	}
 	issueFile.WriteString(defaultIssue.String())
 	issueFile.Close()
-	_, err = repo.Add(g.issueFilename)
+	_, err = repo.Add(it.issueFilename)
 	if err != nil {
 		return err
 	}
@@ -93,8 +93,8 @@ func (g *GitIt) Init() error {
 	return nil
 }
 
-func (g *GitIt) MaxId() string {
-	issues := g.IssueIds()
+func (it *GitIt) MaxId() string {
+	issues := it.IssueIds()
 	if len(issues) == 0 {
 		return NumToId(0)
 	}
@@ -112,32 +112,32 @@ func NextId(id string) string {
 	return NumToId(IdToNum(id) + 1)
 }
 
-func (g *GitIt) NewIssue() (string, error) {
+func (it *GitIt) NewIssue() (string, error) {
 	repo := gitgo.New()
-	id := NextId(g.MaxId())
-	_, err := repo.CheckoutNewBranch(g.IdToBranch(id))
+	id := NextId(it.MaxId())
+	_, err := repo.CheckoutNewBranch(it.IdToBranch(id))
 	if err != nil {
 		return "", err
 	}
 	return id, nil
 }
 
-func (g *GitIt) OpenIssue(id string) error {
+func (it *GitIt) OpenIssue(id string) error {
 	repo := gitgo.New()
-	_, err := repo.Checkout(g.IdToBranch(id))
+	_, err := repo.Checkout(it.IdToBranch(id))
 	return err
 }
 
-func (g *GitIt) CurIssue() (string, error) {
+func (it *GitIt) CurIssue() (string, error) {
 	repo := gitgo.New()
 	branch, err := repo.CurBranch()
 	if err != nil {
 		return "", err
 	}
-	return g.BranchToId(branch), nil
+	return it.BranchToId(branch), nil
 }
 
-func (g *GitIt) Cancel() error {
+func (it *GitIt) Cancel() error {
 	repo := gitgo.New()
 	_, err := repo.Reset("--hard")
 	if err != nil {
@@ -147,9 +147,9 @@ func (g *GitIt) Cancel() error {
 	return err
 }
 
-func (g *GitIt) SaveIssue() error {
+func (it *GitIt) SaveIssue() error {
 	repo := gitgo.New()
-	_, err := repo.Add(g.issueFilename)
+	_, err := repo.Add(it.issueFilename)
 	if err != nil {
 		return err
 	}
@@ -161,27 +161,27 @@ func (g *GitIt) SaveIssue() error {
 	return err
 }
 
-func (g *GitIt) IssueText(id string) string {
+func (it *GitIt) IssueText(id string) string {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
-		branch = g.IdToBranch(id)
+		branch = it.IdToBranch(id)
 	}
-	out, _ := repo.FileContents(branch, g.issueFilename)
+	out, _ := repo.FileContents(branch, it.issueFilename)
 	return out
 }
 
-func (g *GitIt) Blame(id string) (string, error) {
+func (it *GitIt) Blame(id string) (string, error) {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
-		branch = g.IdToBranch(id)
+		branch = it.IdToBranch(id)
 	}
-	return repo.Blame(branch, g.issueFilename)
+	return repo.Blame(branch, it.issueFilename)
 }
 
-func (g *GitIt) Field(id, key string) string {
-	issueText := g.IssueText(id)
+func (it *GitIt) Field(id, key string) string {
+	issueText := it.IssueText(id)
 	parser := dgrl.NewParser()
 	tree := parser.Parse(strings.NewReader(issueText))
 	for _, node := range tree.Kids() {
@@ -194,21 +194,21 @@ func (g *GitIt) Field(id, key string) string {
 	return ""
 }
 
-func (g *GitIt) MatchingIssues(key, val string) []string {
+func (it *GitIt) MatchingIssues(key, val string) []string {
 	matches := []string{}
-	for _, id := range g.IssueIds() {
-		if g.IssueContains(id, key, val) {
+	for _, id := range it.IssueIds() {
+		if it.IssueContains(id, key, val) {
 			matches = append(matches, id)
 		}
 	}
 	return matches
 }
 
-func (g *GitIt) IssueContains(id, key, val string) bool {
+func (it *GitIt) IssueContains(id, key, val string) bool {
 	if key == "" {
 		return true
 	}
-	issueText := g.IssueText(id)
+	issueText := it.IssueText(id)
 	parser := dgrl.NewParser()
 	tree := parser.Parse(strings.NewReader(issueText))
 	for _, node := range tree.Kids() {

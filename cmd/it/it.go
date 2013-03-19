@@ -11,6 +11,9 @@ import (
 )
 
 func main() {
+	log.SetFlags(0)
+	log.SetPrefix(os.Args[0] + ": ")
+
 	if len(os.Args) < 2 {
 		log.Fatalln("You must specify a command")
 	}
@@ -29,7 +32,10 @@ func main() {
 		fmt.Println(idStr(it, id))
 	case "list":
 		for _, id := range it.IssueIds() {
-			fmt.Println(id)
+			status := it.Field(id, "status")
+			summary := it.Field(id, "summary")
+			priority := it.Field(id, "priority")
+			fmt.Printf("%s %-8s %-8s %s\n", id, status, priority, summary)
 		}
 	case "show":
 		id := ""
