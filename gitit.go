@@ -2,7 +2,7 @@ package gitit
 
 import (
 	"github.com/ianremmler/dgrl"
-	"remmler.org/go/gitgo.git"
+	"github.com/ianremmler/gitgo"
 
 	"fmt"
 	"io/ioutil"

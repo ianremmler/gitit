@@ -1,7 +1,7 @@
 package main
 
 import (
-	"remmler.org/go/gitit.git"
+	"github.com/ianremmler/gitit"
 
 	"fmt"
 	"log"
