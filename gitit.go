@@ -83,6 +83,12 @@ func (it *GitIt) IssueIds() []string {
 	return issueIds
 }
 
+func (it *GitIt) ValidRepo() bool {
+	repo := gitgo.New()
+	_, err := repo.Run("status")
+	return err == nil
+}
+
 func (it *GitIt) ValidIssue(id string) bool {
 	repo := gitgo.New()
 	_, err := repo.Run("show-ref", "-q", "--verify", "refs/heads/" + it.IdToBranch(id))
@@ -158,7 +164,7 @@ func (it *GitIt) CurIssue() (string, error) {
 
 func (it *GitIt) Cancel() error {
 	repo := gitgo.New()
-	_, err := repo.Reset("--hard")
+	_, err := repo.Reset()
 	if err != nil {
 		return err
 	}
@@ -180,28 +186,35 @@ func (it *GitIt) SaveIssue() error {
 	return err
 }
 
-func (it *GitIt) IssueText(id string) (string, error) {
+func (it *GitIt) AttachFile(filename string) error {
 	repo := gitgo.New()
-	branch := ""
-	if id != "" {
-		branch = it.IdToBranch(id)
-	}
-	return repo.FileContents(branch, it.issueFilename)
+	_, err := repo.Add(filename)
+	return err
 }
 
-func (it *GitIt) Blame(id string) (string, error) {
+func (it *GitIt) IssueText(id string) string {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
 		branch = it.IdToBranch(id)
 	}
-	return repo.Blame(branch, it.issueFilename)
+	text, _ := repo.FileContents(branch, it.issueFilename)
+	return text
+}
+
+func (it *GitIt) Blame(id string) string {
+	repo := gitgo.New()
+	branch := ""
+	if id != "" {
+		branch = it.IdToBranch(id)
+	}
+	text, _ := repo.Blame(branch, it.issueFilename)
+	return text
 }
 
 func (it *GitIt) Field(id, key string) string {
-	issueText, _ := it.IssueText(id)
 	parser := dgrl.NewParser()
-	tree := parser.Parse(strings.NewReader(issueText))
+	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
 			if leaf.Key() == key {
@@ -226,9 +239,8 @@ func (it *GitIt) IssueContains(id, key, val string) bool {
 	if key == "" {
 		return true
 	}
-	issueText, _ := it.IssueText(id)
 	parser := dgrl.NewParser()
-	tree := parser.Parse(strings.NewReader(issueText))
+	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
 			if leaf.Key() == key && (val == "" || val == leaf.Value()) {

@@ -64,6 +64,8 @@ func main() {
 		editCmd()
 	case "status":
 		statusCmd()
+	case "attach":
+		attachCmd()
 	default:
 		log.Fatalln(cmd + " is not a valid command")
 	}
@@ -74,32 +76,37 @@ func usageCmd() {
 }
 
 func initCmd() {
-	it.Init()
+	if it.Init() != nil {
+		log.Fatalln("Error initializing issue tracker")
+	}
 }
 
 func newCmd() {
+	verifyRepo()
 	id, err := it.NewIssue()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error creating new issue")
 	}
-	fmt.Println(idStr(it, id))
+	fmt.Println(idStr(id))
 }
 
 func listCmd() {
+	verifyRepo()
 	for _, id := range it.IssueIds() {
-		fmt.Println(issueStatus(it, id))
+		fmt.Println(issueStatus(id))
 	}
 }
 
 func showCmd() {
+	verifyRepo()
 	id := ""
 	if len(args) > 0 {
 		id = gitit.FormatId(args[0])
+	} else {
+		id, _ = it.CurIssue()
 	}
-	if !it.ValidIssue(id) {
-		log.Fatalln(id + " is not a valid issue")
-	}
-	fmt.Println(idStr(it, id) + "\n")
+	verifyIssue(id)
+	fmt.Println(idStr(id) + "\n")
 	fmt.Print(it.IssueText(id))
 }
 
@@ -107,21 +114,30 @@ func openCmd() {
 	if len(args) == 0 {
 		log.Fatalln("You must specify an issue to open")
 	}
-	id := args[0]
-	fmt.Println(idStr(it, id))
-	it.OpenIssue(id)
+	verifyRepo()
+	id := gitit.FormatId(args[0])
+	err := it.OpenIssue(id)
+	if err != nil {
+		log.Fatalln("Error opening issue " + id)
+	}
+	fmt.Println(idStr(id))
 }
 
 func saveCmd() {
-	fmt.Println(idStr(it, ""))
-	it.SaveIssue()
+	verifyRepo()
+	fmt.Println(idStr(""))
+	if it.SaveIssue() != nil {
+		log.Fatalln("Error saving issue")
+	}
 }
 
 func cancelCmd() {
+	verifyRepo()
 	it.Cancel()
 }
 
 func findCmd() {
+	verifyRepo()
 	key, val := "", ""
 	if len(args) > 0 {
 		key = args[0]
@@ -136,14 +152,13 @@ func findCmd() {
 }
 
 func blameCmd() {
+	verifyRepo()
 	id := ""
 	if len(args) > 0 {
 		id = gitit.FormatId(args[0])
 	}
-	if !it.ValidIssue(id) {
-		log.Fatalln(id + " is not a valid issue")
-	}
-	fmt.Println(idStr(it, id) + "\n")
+	verifyIssue(id)
+	fmt.Println(idStr(id) + "\n")
 	fmt.Print(it.Blame(id))
 }
 
@@ -155,12 +170,20 @@ func editCmd() {
 	if editor == "" {
 		log.Fatalln("ERROR or VISUAL environment variable must be set")
 	}
-	if len(args) > 0 {
-		id := gitit.FormatId(args[0])
-		if !it.ValidIssue(id) {
-			log.Fatalln(id + " is not a valid issue")
+	verifyRepo()
+	id := ""
+	isCur := (len(args) == 0)
+	if isCur {
+		id, _ = it.CurIssue()
+	} else {
+		id = gitit.FormatId(args[0])
+	}
+	verifyIssue(id)
+	if !isCur {
+		err := it.OpenIssue(id)
+		if err != nil {
+			log.Fatalln("Unable to open issue " + id)
 		}
-		it.OpenIssue(id)
 	}
 	cmd := exec.Command(editor, it.IssueFilename())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -172,19 +195,26 @@ func editCmd() {
 
 func statusCmd() {
 	id := ""
-	if len(args) > 0 {
-		id = args[0]
-	} else {
+	if len(args) == 0 {
 		id, _ = it.CurIssue()
+	} else {
+		id = gitit.FormatId(args[0])
 	}
-	id = gitit.FormatId(id)
-	if !it.ValidIssue(id) {
-		log.Fatalln(id + " is not a valid issue")
-	}
-	fmt.Println(issueStatus(it, id))
+	verifyIssue(id)
+	fmt.Println(issueStatus(id))
 }
 
-func issueStatus(it *gitit.GitIt, id string) string {
+func attachCmd() {
+	if len(args) == 0 {
+		log.Fatalln("You must specify a file to attach")
+	}
+	verifyRepo()
+	if it.AttachFile(args[0]) != nil {
+		log.Fatalln("Error attaching " + args[0])
+	}
+}
+
+func issueStatus(id string) string {
 	id = gitit.FormatId(id)
 	status := it.Field(id, "status")
 	summary := it.Field(id, "summary")
@@ -192,7 +222,7 @@ func issueStatus(it *gitit.GitIt, id string) string {
 	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
 }
 
-func idStr(it *gitit.GitIt, id string) string {
+func idStr(id string) string {
 	if id != "" {
 		return "id: " + gitit.FormatId(id)
 	}
@@ -201,4 +231,16 @@ func idStr(it *gitit.GitIt, id string) string {
 		return "id: " + curId
 	}
 	return "id: ?"
+}
+
+func verifyRepo() {
+	if !it.ValidRepo() {
+		log.Fatalln("Issue tracker repository not found")
+	}
+}
+
+func verifyIssue(id string) {
+	if !it.ValidIssue(id) {
+		log.Fatalln(id + " is not a valid issue")
+	}
 }
