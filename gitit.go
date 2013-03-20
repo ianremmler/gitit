@@ -140,8 +140,12 @@ func NextId(id string) string {
 
 func (it *GitIT) NewIssue() (string, error) {
 	repo := gitgo.New()
+	_, err := repo.Checkout("master")
+	if err != nil {
+		return "", err
+	}
 	id := NextId(it.MaxId())
-	_, err := repo.CheckoutNewBranch(it.IdToBranch(id))
+	_, err = repo.CheckoutNewBranch(it.IdToBranch(id))
 	if err != nil {
 		return "", err
 	}
@@ -213,12 +217,13 @@ func (it *GitIT) Value(id, key string) (string, bool) {
 	return value(it.IssueText(id), key)
 }
 
-func (it *GitIT) WorkingValue(id, key string) (string, bool) {
-	data, err := ioutil.ReadFile(it.issueFilename)
-	if err != nil {
-		return "", false
-	}
-	return value(string(data), key)
+func (it *GitIT) WorkingIssueText() string {
+	data, _ := ioutil.ReadFile(it.issueFilename)
+	return string(data)
+}
+
+func (it *GitIT) WorkingValue(key string) (string, bool) {
+	return value(it.WorkingIssueText(), key)
 }
 
 func value(text, key string) (string, bool) {
