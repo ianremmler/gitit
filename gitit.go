@@ -5,6 +5,7 @@ import (
 	"remmler.org/go/gitgo.git"
 
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -164,11 +165,7 @@ func (it *GitIt) CurIssue() (string, error) {
 
 func (it *GitIt) Cancel() error {
 	repo := gitgo.New()
-	_, err := repo.Reset()
-	if err != nil {
-		return err
-	}
-	_, err = repo.Checkout("--", it.issueFilename)
+	_, err := repo.Reset("--hard")
 	if err != nil {
 		return err
 	}
@@ -183,10 +180,6 @@ func (it *GitIt) SaveIssue() error {
 		return err
 	}
 	_, err = repo.Commit("Updated issue.")
-	if err != nil {
-		return err
-	}
-	_, err = repo.Checkout("master")
 	return err
 }
 
@@ -216,9 +209,21 @@ func (it *GitIt) Blame(id string) string {
 	return text
 }
 
-func (it *GitIt) Field(id, key string) (string, bool) {
+func (it *GitIt) Value(id, key string) (string, bool) {
+	return value(it.IssueText(id), key)
+}
+
+func (it *GitIt) WorkingValue(id, key string) (string, bool) {
+	data, err := ioutil.ReadFile(it.issueFilename)
+	if err != nil {
+		return "", false
+	}
+	return value(string(data), key)
+}
+
+func value(text, key string) (string, bool) {
 	parser := dgrl.NewParser()
-	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
+	tree := parser.Parse(strings.NewReader(text))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
 			if leaf.Key() == key {
@@ -229,9 +234,13 @@ func (it *GitIt) Field(id, key string) (string, bool) {
 	return "", false
 }
 
-func (it *GitIt) SetField(id, key, val string) bool {
+func (it *GitIt) SetWorkingValue(key, val string) bool {
+	data, err := ioutil.ReadFile(it.issueFilename)
+	if err != nil {
+		return false
+	}
 	parser := dgrl.NewParser()
-	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
+	tree := parser.Parse(strings.NewReader(string(data)))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
 			if leaf.Key() == key {

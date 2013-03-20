@@ -19,7 +19,7 @@ it list                  List issues
 it show [<id>]           Show issue
 it open <id>             Open issue
 it save                  Save issue
-it cancel                Cancel any pending changes and close issue
+it [cancel | close]      Cancel any pending changes and close issue
 it edit [<id>]           Edit issue
 it find [<key> [<val>]]  Find issues with given key and value
 it blame [<id>]          Show 'git blame' for issue
@@ -54,7 +54,7 @@ func main() {
 		openCmd()
 	case "save":
 		saveCmd()
-	case "cancel":
+	case "cancel", "close":
 		cancelCmd()
 	case "find":
 		findCmd()
@@ -158,8 +158,7 @@ func setCmd() {
 	if len(args) < 2 {
 		log.Fatalln("You must specify a key and value")
 	}
-	id, _ := it.CurIssue()
-	if !it.SetField(id, args[0], args[1]) {
+	if !it.SetWorkingValue(args[0], args[1]) {
 		log.Fatalln("Error setting value")
 	}
 }
@@ -229,21 +228,20 @@ func attachCmd() {
 
 func issueStatus(id string) string {
 	id = gitit.FormatId(id)
-	status, _ := it.Field(id, "status")
-	summary, _ := it.Field(id, "summary")
-	priority, _ := it.Field(id, "priority")
+	status, _ := it.Value(id, "status")
+	summary, _ := it.Value(id, "summary")
+	priority, _ := it.Value(id, "priority")
 	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
 }
 
 func idStr(id string) string {
-	if id != "" {
-		return "id: " + gitit.FormatId(id)
+	if id == "" {
+		id, _ = it.CurIssue()
 	}
-	curId, _ := it.CurIssue()
-	if curId != "" {
-		return "id: " + curId
+	if id == "" {
+		return "[?]"
 	}
-	return "id: ?"
+	return "[" + gitit.FormatId(id) + "]"
 }
 
 func verifyRepo() {
