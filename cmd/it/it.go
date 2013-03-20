@@ -58,6 +58,8 @@ func main() {
 		cancelCmd()
 	case "find":
 		findCmd()
+	case "set":
+		setCmd()
 	case "blame":
 		blameCmd()
 	case "edit":
@@ -151,6 +153,17 @@ func findCmd() {
 	}
 }
 
+func setCmd() {
+	verifyRepo()
+	if len(args) < 2 {
+		log.Fatalln("You must specify a key and value")
+	}
+	id, _ := it.CurIssue()
+	if !it.SetField(id, args[0], args[1]) {
+		log.Fatalln("Error setting value")
+	}
+}
+
 func blameCmd() {
 	verifyRepo()
 	id := ""
@@ -216,9 +229,9 @@ func attachCmd() {
 
 func issueStatus(id string) string {
 	id = gitit.FormatId(id)
-	status := it.Field(id, "status")
-	summary := it.Field(id, "summary")
-	priority := it.Field(id, "priority")
+	status, _ := it.Field(id, "status")
+	summary, _ := it.Field(id, "summary")
+	priority, _ := it.Field(id, "priority")
 	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
 }
 

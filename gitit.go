@@ -168,6 +168,10 @@ func (it *GitIt) Cancel() error {
 	if err != nil {
 		return err
 	}
+	_, err = repo.Checkout("--", it.issueFilename)
+	if err != nil {
+		return err
+	}
 	_, err = repo.Checkout("master")
 	return err
 }
@@ -212,17 +216,37 @@ func (it *GitIt) Blame(id string) string {
 	return text
 }
 
-func (it *GitIt) Field(id, key string) string {
+func (it *GitIt) Field(id, key string) (string, bool) {
 	parser := dgrl.NewParser()
 	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
 			if leaf.Key() == key {
-				return leaf.Value()
+				return leaf.Value(), true
 			}
 		}
 	}
-	return ""
+	return "", false
+}
+
+func (it *GitIt) SetField(id, key, val string) bool {
+	parser := dgrl.NewParser()
+	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
+	for _, node := range tree.Kids() {
+		if leaf, ok := node.(*dgrl.Leaf); ok {
+			if leaf.Key() == key {
+				leaf.SetValue(val)
+				issueFile, err := os.Create(it.issueFilename)
+				if err != nil {
+					return false
+				}
+				issueFile.WriteString(tree.String())
+				issueFile.Close()
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (it *GitIt) MatchingIssues(key, val string) []string {
