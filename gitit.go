@@ -38,7 +38,11 @@ func FormatId(id string) string {
 	if id == "master" {
 		return id
 	}
-	return NumToId(IdToNum(id))
+	n := IdToNum(id)
+	if n < 0 {
+		return id
+	}
+	return NumToId(n)
 }
 
 func (it *GitIt) IssueFilename() string {
@@ -81,7 +85,7 @@ func (it *GitIt) IssueIds() []string {
 
 func (it *GitIt) ValidIssue(id string) bool {
 	repo := gitgo.New()
-	_, err := repo.Run("show-ref", "--verify", "refs/heads/" + it.IdToBranch(id))
+	_, err := repo.Run("show-ref", "-q", "--verify", "refs/heads/" + it.IdToBranch(id))
 	return err == nil
 }
 
@@ -176,14 +180,13 @@ func (it *GitIt) SaveIssue() error {
 	return err
 }
 
-func (it *GitIt) IssueText(id string) string {
+func (it *GitIt) IssueText(id string) (string, error) {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
 		branch = it.IdToBranch(id)
 	}
-	out, _ := repo.FileContents(branch, it.issueFilename)
-	return out
+	return repo.FileContents(branch, it.issueFilename)
 }
 
 func (it *GitIt) Blame(id string) (string, error) {
@@ -196,7 +199,7 @@ func (it *GitIt) Blame(id string) (string, error) {
 }
 
 func (it *GitIt) Field(id, key string) string {
-	issueText := it.IssueText(id)
+	issueText, _ := it.IssueText(id)
 	parser := dgrl.NewParser()
 	tree := parser.Parse(strings.NewReader(issueText))
 	for _, node := range tree.Kids() {
@@ -223,7 +226,7 @@ func (it *GitIt) IssueContains(id, key, val string) bool {
 	if key == "" {
 		return true
 	}
-	issueText := it.IssueText(id)
+	issueText, _ := it.IssueText(id)
 	parser := dgrl.NewParser()
 	tree := parser.Parse(strings.NewReader(issueText))
 	for _, node := range tree.Kids() {

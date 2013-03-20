@@ -138,7 +138,10 @@ func findCmd() {
 func blameCmd() {
 	id := ""
 	if len(args) > 0 {
-		id = args[0]
+		id = gitit.FormatId(args[0])
+	}
+	if !it.ValidIssue(id) {
+		log.Fatalln(id + " is not a valid issue")
 	}
 	fmt.Println(idStr(it, id) + "\n")
 	fmt.Print(it.Blame(id))
