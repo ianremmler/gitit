@@ -79,6 +79,12 @@ func (it *GitIt) IssueIds() []string {
 	return issueIds
 }
 
+func (it *GitIt) ValidIssue(id string) bool {
+	repo := gitgo.New()
+	_, err := repo.Run("show-ref", "--verify", "refs/heads/" + it.IdToBranch(id))
+	return err == nil
+}
+
 func (it *GitIt) Init() error {
 	repo := gitgo.New()
 	_, err := repo.Init()

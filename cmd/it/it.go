@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-const usage = `it usage
+const usage = `usage:
 
-it                       Show status of current issue
+it [help | usage]        Show usage
 it init                  Initialize new issue tracker
 it new                   Create new issue
 it list                  List issues
@@ -25,99 +25,160 @@ it find [<key> [<val>]]  Find issues with given key and value
 it blame [<id>]          Show 'git blame' for issue
 it edit [<id>]           Edit issue`
 
+var (
+	args = os.Args[1:]
+	it   = gitit.New()
+)
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("it: ")
 
-	it := gitit.New()
-
 	cmd := ""
-	if len(os.Args) >= 2 {
-		cmd = strings.ToLower(os.Args[1])
+	if len(args) > 0 {
+		cmd = strings.ToLower(args[0])
+		args = args[1:]
 	}
 	switch cmd {
-	case "", "-h", "-help", "--help", "help", "usage":
-		fmt.Println(usage)
+	case "", "-h", "-help", "--help", "help", "-u", "-usage", "--usage", "usage":
+		usageCmd()
 	case "init":
-		it.Init()
+		initCmd()
 	case "new":
-		id, err := it.NewIssue()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Println(idStr(it, id))
+		newCmd()
 	case "list":
-		for _, id := range it.IssueIds() {
-			fmt.Println(issueStatus(it, id))
-		}
+		listCmd()
 	case "show":
-		id := ""
-		if len(os.Args) > 2 {
-			id = os.Args[2]
-		}
-		fmt.Println(idStr(it, id) + "\n")
-		fmt.Print(it.IssueText(id))
+		showCmd()
 	case "open":
-		if len(os.Args) < 3 {
-			log.Fatalln("You must specify an issue to open")
-		}
-		id := os.Args[2]
-		fmt.Println(idStr(it, id))
-		it.OpenIssue(id)
+		openCmd()
 	case "save":
-		fmt.Println(idStr(it, ""))
-		it.SaveIssue()
+		saveCmd()
 	case "cancel":
-		it.Cancel()
+		cancelCmd()
 	case "find":
-		key, val := "", ""
-		if len(os.Args) > 2 {
-			key = os.Args[2]
-		}
-		if len(os.Args) > 3 {
-			val = os.Args[3]
-		}
-		matches := it.MatchingIssues(key, val)
-		for _, id := range matches {
-			fmt.Println(id)
-		}
+		findCmd()
 	case "blame":
-		id := ""
-		if len(os.Args) > 2 {
-			id = os.Args[2]
-		}
-		fmt.Println(idStr(it, id) + "\n")
-		fmt.Print(it.Blame(id))
+		blameCmd()
 	case "edit":
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = os.Getenv("VISUAL")
-		}
-		if editor == "" {
-			log.Fatalln("ERROR or VISUAL environment variable must be set")
-		}
-		if len(os.Args) > 2 {
-			it.OpenIssue(os.Args[2])
-		}
-		cmd := exec.Command(editor, it.IssueFilename())
-		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			fmt.Println(err)
-		}
+		editCmd()
 	case "status":
-		id := ""
-		if len(os.Args) > 2 {
-			id = os.Args[2]
-		} else {
-		    id, _ = it.CurIssue()
-		}
-		if id != "" {
-			fmt.Println(issueStatus(it, id))
-		}
+		statusCmd()
 	default:
 		log.Fatalln(cmd + " is not a valid command")
 	}
+}
+
+func usageCmd() {
+	fmt.Println(usage)
+}
+
+func initCmd() {
+	it.Init()
+}
+
+func newCmd() {
+	id, err := it.NewIssue()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(idStr(it, id))
+}
+
+func listCmd() {
+	for _, id := range it.IssueIds() {
+		fmt.Println(issueStatus(it, id))
+	}
+}
+
+func showCmd() {
+	id := ""
+	if len(args) > 0 {
+		id = gitit.FormatId(args[0])
+	}
+	if !it.ValidIssue(id) {
+		log.Fatalln(id + " is not a valid issue")
+	}
+	fmt.Println(idStr(it, id) + "\n")
+	fmt.Print(it.IssueText(id))
+}
+
+func openCmd() {
+	if len(args) == 0 {
+		log.Fatalln("You must specify an issue to open")
+	}
+	id := args[0]
+	fmt.Println(idStr(it, id))
+	it.OpenIssue(id)
+}
+
+func saveCmd() {
+	fmt.Println(idStr(it, ""))
+	it.SaveIssue()
+}
+
+func cancelCmd() {
+	it.Cancel()
+}
+
+func findCmd() {
+	key, val := "", ""
+	if len(args) > 0 {
+		key = args[0]
+	}
+	if len(args) > 1 {
+		val = args[1]
+	}
+	matches := it.MatchingIssues(key, val)
+	for _, id := range matches {
+		fmt.Println(id)
+	}
+}
+
+func blameCmd() {
+	id := ""
+	if len(args) > 0 {
+		id = args[0]
+	}
+	fmt.Println(idStr(it, id) + "\n")
+	fmt.Print(it.Blame(id))
+}
+
+func editCmd() {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		log.Fatalln("ERROR or VISUAL environment variable must be set")
+	}
+	if len(args) > 0 {
+		id := gitit.FormatId(args[0])
+		if !it.ValidIssue(id) {
+			log.Fatalln(id + " is not a valid issue")
+		}
+		it.OpenIssue(id)
+	}
+	cmd := exec.Command(editor, it.IssueFilename())
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func statusCmd() {
+	id := ""
+	if len(args) > 0 {
+		id = args[0]
+	} else {
+		id, _ = it.CurIssue()
+	}
+	id = gitit.FormatId(id)
+	if !it.ValidIssue(id) {
+		log.Fatalln(id + " is not a valid issue")
+	}
+	fmt.Println(issueStatus(it, id))
 }
 
 func issueStatus(it *gitit.GitIt, id string) string {
