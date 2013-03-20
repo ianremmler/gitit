@@ -11,13 +11,13 @@ import (
 	"strings"
 )
 
-type GitIt struct {
+type GitIT struct {
 	branchPath    string
 	issueFilename string
 }
 
-func New() *GitIt {
-	return &GitIt{
+func New() *GitIT {
+	return &GitIT{
 		branchPath:    "issue/",
 		issueFilename: "issue",
 	}
@@ -46,11 +46,11 @@ func FormatId(id string) string {
 	return NumToId(n)
 }
 
-func (it *GitIt) IssueFilename() string {
+func (it *GitIT) IssueFilename() string {
 	return it.issueFilename
 }
 
-func (it *GitIt) IdToBranch(id string) string {
+func (it *GitIT) IdToBranch(id string) string {
 	if id == "master" {
 		return id
 	}
@@ -61,7 +61,7 @@ func (it *GitIt) IdToBranch(id string) string {
 	return it.branchPath + id
 }
 
-func (it *GitIt) BranchToId(branch string) string {
+func (it *GitIT) BranchToId(branch string) string {
 	if branch == "master" {
 		return branch
 	}
@@ -71,7 +71,7 @@ func (it *GitIt) BranchToId(branch string) string {
 	return ""
 }
 
-func (it *GitIt) IssueIds() []string {
+func (it *GitIT) IssueIds() []string {
 	repo := gitgo.New()
 	issueIds := []string{}
 	branches, _ := repo.Branches(it.branchPath)
@@ -84,19 +84,19 @@ func (it *GitIt) IssueIds() []string {
 	return issueIds
 }
 
-func (it *GitIt) ValidRepo() bool {
+func (it *GitIT) ValidRepo() bool {
 	repo := gitgo.New()
 	_, err := repo.Run("status")
 	return err == nil
 }
 
-func (it *GitIt) ValidIssue(id string) bool {
+func (it *GitIT) ValidIssue(id string) bool {
 	repo := gitgo.New()
 	_, err := repo.Run("show-ref", "-q", "--verify", "refs/heads/" + it.IdToBranch(id))
 	return err == nil
 }
 
-func (it *GitIt) Init() error {
+func (it *GitIT) Init() error {
 	repo := gitgo.New()
 	_, err := repo.Init()
 	if err != nil {
@@ -119,7 +119,7 @@ func (it *GitIt) Init() error {
 	return nil
 }
 
-func (it *GitIt) MaxId() string {
+func (it *GitIT) MaxId() string {
 	issues := it.IssueIds()
 	if len(issues) == 0 {
 		return NumToId(0)
@@ -138,7 +138,7 @@ func NextId(id string) string {
 	return NumToId(IdToNum(id) + 1)
 }
 
-func (it *GitIt) NewIssue() (string, error) {
+func (it *GitIT) NewIssue() (string, error) {
 	repo := gitgo.New()
 	id := NextId(it.MaxId())
 	_, err := repo.CheckoutNewBranch(it.IdToBranch(id))
@@ -148,13 +148,13 @@ func (it *GitIt) NewIssue() (string, error) {
 	return id, nil
 }
 
-func (it *GitIt) OpenIssue(id string) error {
+func (it *GitIT) OpenIssue(id string) error {
 	repo := gitgo.New()
 	_, err := repo.Checkout(it.IdToBranch(id))
 	return err
 }
 
-func (it *GitIt) CurIssue() (string, error) {
+func (it *GitIT) CurIssue() (string, error) {
 	repo := gitgo.New()
 	branch, err := repo.CurBranch()
 	if err != nil {
@@ -163,7 +163,7 @@ func (it *GitIt) CurIssue() (string, error) {
 	return it.BranchToId(branch), nil
 }
 
-func (it *GitIt) Cancel() error {
+func (it *GitIT) Cancel() error {
 	repo := gitgo.New()
 	_, err := repo.Reset("--hard")
 	if err != nil {
@@ -173,7 +173,7 @@ func (it *GitIt) Cancel() error {
 	return err
 }
 
-func (it *GitIt) SaveIssue() error {
+func (it *GitIT) SaveIssue() error {
 	repo := gitgo.New()
 	_, err := repo.Add(it.issueFilename)
 	if err != nil {
@@ -183,13 +183,13 @@ func (it *GitIt) SaveIssue() error {
 	return err
 }
 
-func (it *GitIt) AttachFile(filename string) error {
+func (it *GitIT) AttachFile(filename string) error {
 	repo := gitgo.New()
 	_, err := repo.Add(filename)
 	return err
 }
 
-func (it *GitIt) IssueText(id string) string {
+func (it *GitIT) IssueText(id string) string {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
@@ -199,7 +199,7 @@ func (it *GitIt) IssueText(id string) string {
 	return text
 }
 
-func (it *GitIt) Blame(id string) string {
+func (it *GitIT) Blame(id string) string {
 	repo := gitgo.New()
 	branch := ""
 	if id != "" {
@@ -209,11 +209,11 @@ func (it *GitIt) Blame(id string) string {
 	return text
 }
 
-func (it *GitIt) Value(id, key string) (string, bool) {
+func (it *GitIT) Value(id, key string) (string, bool) {
 	return value(it.IssueText(id), key)
 }
 
-func (it *GitIt) WorkingValue(id, key string) (string, bool) {
+func (it *GitIT) WorkingValue(id, key string) (string, bool) {
 	data, err := ioutil.ReadFile(it.issueFilename)
 	if err != nil {
 		return "", false
@@ -234,7 +234,7 @@ func value(text, key string) (string, bool) {
 	return "", false
 }
 
-func (it *GitIt) SetWorkingValue(key, val string) bool {
+func (it *GitIT) SetWorkingValue(key, val string) bool {
 	data, err := ioutil.ReadFile(it.issueFilename)
 	if err != nil {
 		return false
@@ -258,7 +258,7 @@ func (it *GitIt) SetWorkingValue(key, val string) bool {
 	return false
 }
 
-func (it *GitIt) MatchingIssues(key, val string) []string {
+func (it *GitIT) MatchingIssues(key, val string) []string {
 	matches := []string{}
 	for _, id := range it.IssueIds() {
 		if it.IssueContains(id, key, val) {
@@ -268,7 +268,7 @@ func (it *GitIt) MatchingIssues(key, val string) []string {
 	return matches
 }
 
-func (it *GitIt) IssueContains(id, key, val string) bool {
+func (it *GitIT) IssueContains(id, key, val string) bool {
 	if key == "" {
 		return true
 	}
