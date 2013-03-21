@@ -181,6 +181,8 @@ func blameCmd() {
 	id := ""
 	if len(args) > 0 {
 		id = args[0]
+	} else {
+		id = it.CurrentIssue()
 	}
 	verifyIssue(id)
 	fmt.Printf("%s\n\n%s", idStr(id), it.Blame(id))
@@ -219,10 +221,10 @@ func editCmd() {
 
 func statusCmd() {
 	id := ""
-	if len(args) == 0 {
-		id = it.CurrentIssue()
-	} else {
+	if len(args) > 0 {
 		id = args[0]
+	} else {
+		id = it.CurrentIssue()
 	}
 	verifyIssue(id)
 	fmt.Println(issueStatus(id))
