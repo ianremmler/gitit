@@ -18,12 +18,15 @@ it new                   Create new issue
 it list                  List issues
 it show [<id>]           Show issue
 it open <id>             Open issue
-it save                  Save issue
-it [cancel | close]      Cancel any pending changes and close issue
+it save                  Save current issue
+it close                 Save any pending changes and close current issue
+it cancel                Cancel any pending changes and close current issue
 it edit [<id>]           Edit issue
 it find [<key> [<val>]]  Find issues with given key and value
 it blame [<id>]          Show 'git blame' for issue
-it edit [<id>]           Edit issue`
+it edit [<id>]           Edit issue
+it status                Show status of current issue
+it [attach | add]        Attach file to current issue`
 
 var (
 	args = os.Args[1:]
@@ -54,7 +57,9 @@ func main() {
 		openCmd()
 	case "save":
 		saveCmd()
-	case "cancel", "close":
+	case "close":
+		closeCmd()
+	case "cancel":
 		cancelCmd()
 	case "find":
 		findCmd()
@@ -66,7 +71,7 @@ func main() {
 		editCmd()
 	case "status":
 		statusCmd()
-	case "attach":
+	case "attach", "add":
 		attachCmd()
 	default:
 		log.Fatalln(cmd + " is not a valid command")
@@ -137,9 +142,16 @@ func saveCmd() {
 	fmt.Println(idStr(it.CurrentIssue()))
 }
 
+func closeCmd() {
+	verifyRepo()
+	it.SaveIssue()
+	it.Cancel()
+}
+
 func cancelCmd() {
 	verifyRepo()
 	it.Cancel()
+	fmt.Println(idStr(it.CurrentIssue()))
 }
 
 func findCmd() {
@@ -240,9 +252,6 @@ func issueStatus(id string) string {
 }
 
 func idStr(id string) string {
-	if id == "" {
-		return "[?]"
-	}
 	return "[" + gitit.FormatId(id) + "]"
 }
 

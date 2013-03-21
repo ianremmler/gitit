@@ -36,12 +36,15 @@ func IdToNum(id string) int {
 }
 
 func FormatId(id string) string {
+	if id == "" {
+		return "?"
+	}
 	if id == "master" {
 		return id
 	}
 	n := IdToNum(id)
 	if n < 0 {
-		return id
+		return "?"
 	}
 	return NumToId(n)
 }
