@@ -131,10 +131,10 @@ func openCmd() {
 
 func saveCmd() {
 	verifyRepo()
-	fmt.Println(idStr(""))
 	if it.SaveIssue() != nil {
 		log.Fatalln("Error saving issue")
 	}
+	fmt.Println(idStr(it.CurrentIssue()))
 }
 
 func cancelCmd() {
