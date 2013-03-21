@@ -136,10 +136,7 @@ func openCmd() {
 
 func saveCmd() {
 	verifyRepo()
-	if it.SaveIssue() != nil {
-		log.Fatalln("Error saving issue")
-	}
-	fmt.Println(idStr(it.CurrentIssue()))
+	it.SaveIssue()
 }
 
 func closeCmd() {
@@ -151,7 +148,6 @@ func closeCmd() {
 func cancelCmd() {
 	verifyRepo()
 	it.Cancel()
-	fmt.Println(idStr(it.CurrentIssue()))
 }
 
 func findCmd() {
