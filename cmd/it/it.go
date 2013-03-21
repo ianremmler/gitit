@@ -17,7 +17,6 @@ it init                  Initialize new issue tracker
 it new                   Create new issue
 it list                  List issues
 it show [<id>]           Show issue
-it now                   Show working state of current issue
 it open <id>             Open issue
 it save                  Save issue
 it [cancel | close]      Cancel any pending changes and close issue
@@ -51,8 +50,6 @@ func main() {
 		listCmd()
 	case "show":
 		showCmd()
-	case "now":
-		nowCmd()
 	case "open":
 		openCmd()
 	case "save":
@@ -112,17 +109,11 @@ func showCmd() {
 	id := ""
 	if len(args) > 0 {
 		id = args[0]
+		verifyIssue(id)
+		fmt.Printf("%s\n\n%s", idStr(id), it.IssueText(id))
 	} else {
-		id = it.CurrentIssue()
+		fmt.Printf("%s\n\n%s", idStr(it.CurrentIssue()), it.WorkingIssueText())
 	}
-	verifyIssue(id)
-	fmt.Printf("%s\n\n%s", idStr(id), it.IssueText(id))
-}
-
-func nowCmd() {
-	verifyRepo()
-	id := it.CurrentIssue()
-	fmt.Printf("%s\n\n%s", idStr(id), it.WorkingIssueText())
 }
 
 func openCmd() {
