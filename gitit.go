@@ -158,13 +158,13 @@ func (it *GitIT) OpenIssue(id string) error {
 	return err
 }
 
-func (it *GitIT) CurIssue() (string, error) {
+func (it *GitIT) CurrentIssue() string {
 	repo := gitgo.New()
 	branch, err := repo.CurBranch()
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return it.BranchToId(branch), nil
+	return it.BranchToId(branch)
 }
 
 func (it *GitIT) Cancel() error {

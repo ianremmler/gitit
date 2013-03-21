@@ -97,8 +97,13 @@ func newCmd() {
 
 func listCmd() {
 	verifyRepo()
+	curId := it.CurrentIssue()
 	for _, id := range it.IssueIds() {
-		fmt.Println(issueStatus(id))
+		statusChar := ' '
+		if id == curId {
+			statusChar = '*'
+		}
+		fmt.Printf("%c %s\n", statusChar, issueStatus(id))
 	}
 }
 
@@ -106,9 +111,9 @@ func showCmd() {
 	verifyRepo()
 	id := ""
 	if len(args) > 0 {
-		id = gitit.FormatId(args[0])
+		id = args[0]
 	} else {
-		id, _ = it.CurIssue()
+		id = it.CurrentIssue()
 	}
 	verifyIssue(id)
 	fmt.Printf("%s\n\n%s", idStr(id), it.IssueText(id))
@@ -116,7 +121,7 @@ func showCmd() {
 
 func nowCmd() {
 	verifyRepo()
-	id, _ := it.CurIssue()
+	id := it.CurrentIssue()
 	fmt.Printf("%s\n\n%s", idStr(id), it.WorkingIssueText())
 }
 
@@ -175,7 +180,7 @@ func blameCmd() {
 	verifyRepo()
 	id := ""
 	if len(args) > 0 {
-		id = gitit.FormatId(args[0])
+		id = args[0]
 	}
 	verifyIssue(id)
 	fmt.Printf("%s\n\n%s", idStr(id), it.Blame(id))
@@ -193,7 +198,7 @@ func editCmd() {
 	id := ""
 	isCur := (len(args) == 0)
 	if isCur {
-		id, _ = it.CurIssue()
+		id = it.CurrentIssue()
 	} else {
 		id = gitit.FormatId(args[0])
 	}
@@ -215,9 +220,9 @@ func editCmd() {
 func statusCmd() {
 	id := ""
 	if len(args) == 0 {
-		id, _ = it.CurIssue()
+		id = it.CurrentIssue()
 	} else {
-		id = gitit.FormatId(args[0])
+		id = args[0]
 	}
 	verifyIssue(id)
 	fmt.Println(issueStatus(id))
@@ -242,9 +247,6 @@ func issueStatus(id string) string {
 }
 
 func idStr(id string) string {
-	if id == "" {
-		id, _ = it.CurIssue()
-	}
 	if id == "" {
 		return "[?]"
 	}
