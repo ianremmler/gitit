@@ -101,11 +101,7 @@ func listCmd() {
 	verifyRepo()
 	curId := it.CurrentIssue()
 	for _, id := range it.IssueIds() {
-		statusChar := ' '
-		if id == curId {
-			statusChar = '*'
-		}
-		fmt.Printf("%c %s\n", statusChar, issueStatus(id))
+		fmt.Println(statusStr(id, curId))
 	}
 }
 
@@ -160,8 +156,9 @@ func findCmd() {
 		val = args[1]
 	}
 	matches := it.MatchingIssues(key, val)
+	curId := it.CurrentIssue()
 	for _, id := range matches {
-		fmt.Println(id)
+		fmt.Println(statusStr(id, curId))
 	}
 }
 
@@ -261,4 +258,12 @@ func verifyIssue(id string) {
 	if !it.ValidIssue(id) {
 		log.Fatalln(id + " is not a valid issue")
 	}
+}
+
+func statusStr(id, curId string) string {
+	statusChar := ' '
+	if id == curId {
+		statusChar = '*'
+	}
+	return fmt.Sprintf("%c %s", statusChar, issueStatus(id))
 }
