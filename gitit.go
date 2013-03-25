@@ -291,3 +291,17 @@ func (it *GitIT) IssueContains(id, key, val string) bool {
 	}
 	return false
 }
+
+func (it *GitIT) ToDgrl() *dgrl.Branch {
+	parser := dgrl.NewParser()
+	root := dgrl.NewRoot()
+	for _, id := range it.IssueIds() {
+		issue := dgrl.NewBranch(id)
+		tree := parser.Parse(strings.NewReader(it.IssueText(id)))
+		for _, kid := range tree.Kids() {
+			issue.Append(kid)
+		}
+		root.Append(issue)
+	}
+	return root
+}

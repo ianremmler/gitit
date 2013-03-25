@@ -12,7 +12,7 @@ import (
 
 const usage = `usage:
 
-it [help | usage]        Show usage
+it help | usage          Show usage
 it init                  Initialize new issue tracker
 it new                   Create new issue
 it list                  List issues
@@ -26,7 +26,9 @@ it find [<key> [<val>]]  Find issues with given key and value
 it blame [<id>]          Show 'git blame' for issue
 it edit [<id>]           Edit issue
 it status                Show status of current issue
-it [attach | add]        Attach file to current issue`
+it attach | add          Attach file to current issue
+it todgrl                Export issues to Doggerel format
+it tojson                Export issues to JSON format`
 
 var (
 	args = os.Args[1:]
@@ -73,6 +75,10 @@ func main() {
 		statusCmd()
 	case "attach", "add":
 		attachCmd()
+	case "todgrl":
+		dgrlCmd()
+	case "tojson":
+		jsonCmd()
 	default:
 		log.Fatalln(cmd + " is not a valid command")
 	}
@@ -237,6 +243,14 @@ func attachCmd() {
 	if it.AttachFile(args[0]) != nil {
 		log.Fatalln("Error attaching " + args[0])
 	}
+}
+
+func dgrlCmd() {
+	fmt.Print(it.ToDgrl())
+}
+
+func jsonCmd() {
+	fmt.Println(it.ToDgrl().ToJson())
 }
 
 func issueStatus(id string) string {
