@@ -250,7 +250,7 @@ func dgrlCmd() {
 }
 
 func jsonCmd() {
-	fmt.Println(it.ToDgrl().ToJson())
+	fmt.Println(it.ToDgrl().ToJSON())
 }
 
 func issueStatus(id string) string {
