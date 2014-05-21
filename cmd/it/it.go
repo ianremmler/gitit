@@ -12,7 +12,7 @@ import (
 
 const usage = `usage:
 
-spec: all | <id(s)> | with <key> [<val>]
+spec: all | <id(s)> | (with|without) <key> [<val>]
 
 it [help | usage]      Show usage
 it state [<spec>]      Show issue state
@@ -242,7 +242,7 @@ func verifyIssue(id string) {
 	}
 }
 
-func matchIds(kv []string) []string {
+func matchIds(kv []string, doesMatch bool) []string {
 	key, val := "", ""
 	if len(kv) > 0 {
 		key = kv[0]
@@ -250,7 +250,7 @@ func matchIds(kv []string) []string {
 	if len(kv) > 1 {
 		val = kv[1]
 	}
-	return it.MatchingIssues(key, val)
+	return it.Match(key, val, doesMatch)
 }
 
 func specIds(args []string) []string {
@@ -259,7 +259,9 @@ func specIds(args []string) []string {
 	case len(args) == 0:
 		ids = append(ids, it.CurrentIssue())
 	case args[0] == "with":
-		ids = matchIds(args[1:])
+		ids = matchIds(args[1:], true)
+	case args[0] == "without":
+		ids = matchIds(args[1:], false)
 	case args[0] == "all":
 		ids = it.IssueIds()
 	default:

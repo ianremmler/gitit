@@ -275,10 +275,10 @@ func (it *GitIT) SetWorkingValue(key, val string) bool {
 	return false
 }
 
-func (it *GitIT) MatchingIssues(key, val string) []string {
+func (it *GitIT) Match(key, val string, doesMatch bool) []string {
 	matches := []string{}
 	for _, id := range it.IssueIds() {
-		if it.IssueContains(id, key, val) {
+		if it.IssueContains(id, key, val) == doesMatch {
 			matches = append(matches, id)
 		}
 	}
