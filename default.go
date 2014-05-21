@@ -13,5 +13,5 @@ func init() {
 	defaultIssue.Append(dgrl.NewLeaf("status", ""))
 	defaultIssue.Append(dgrl.NewLeaf("priority", ""))
 	defaultIssue.Append(dgrl.NewLeaf("assigned", ""))
-	defaultIssue.Append(dgrl.NewLongLeaf("description", "\n"))
+	defaultIssue.Append(dgrl.NewLongLeaf("description", ""))
 }

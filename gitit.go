@@ -1,14 +1,14 @@
 package gitit
 
 import (
-	"github.com/ianremmler/dgrl"
-	"github.com/ianremmler/gitgo"
-
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/ianremmler/dgrl"
+	"github.com/ianremmler/gitgo"
 )
 
 type GitIT struct {
@@ -95,8 +95,17 @@ func (it *GitIT) ValidRepo() bool {
 
 func (it *GitIT) ValidIssue(id string) bool {
 	repo := gitgo.New()
-	_, err := repo.Run("show-ref", "-q", "--verify", "refs/heads/" + it.IdToBranch(id))
+	_, err := repo.Run("show-ref", "-q", "--verify", "refs/heads/"+it.IdToBranch(id))
 	return err == nil
+}
+
+func (it *GitIT) Dirty() bool {
+	repo := gitgo.New()
+	stat, err := repo.Run("status", "--porcelain")
+	if err != nil {
+		return false
+	}
+	return len(stat) > 0
 }
 
 func (it *GitIT) Init() error {
@@ -284,7 +293,7 @@ func (it *GitIT) IssueContains(id, key, val string) bool {
 	tree := parser.Parse(strings.NewReader(it.IssueText(id)))
 	for _, node := range tree.Kids() {
 		if leaf, ok := node.(*dgrl.Leaf); ok {
-			if leaf.Key() == key && (val == "" || val == leaf.Value()) {
+			if strings.Contains(leaf.Key(), key) && strings.Contains(leaf.Value(), val) {
 				return true
 			}
 		}
@@ -292,11 +301,11 @@ func (it *GitIT) IssueContains(id, key, val string) bool {
 	return false
 }
 
-func (it *GitIT) ToDgrl() *dgrl.Branch {
+func (it *GitIT) ToDgrl(ids []string) *dgrl.Branch {
 	parser := dgrl.NewParser()
 	root := dgrl.NewRoot()
-	for _, id := range it.IssueIds() {
-		issue := dgrl.NewBranch(id)
+	for _, id := range ids {
+		issue := dgrl.NewBranch(FormatId(id))
 		tree := parser.Parse(strings.NewReader(it.IssueText(id)))
 		for _, kid := range tree.Kids() {
 			issue.Append(kid)

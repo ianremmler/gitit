@@ -1,34 +1,31 @@
 package main
 
 import (
-	"github.com/ianremmler/gitit"
-
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/ianremmler/gitit"
 )
 
 const usage = `usage:
 
-it help | usage          Show usage
-it init                  Initialize new issue tracker
-it new                   Create new issue
-it list                  List issues
-it show [<id>]           Show issue
-it open <id>             Open issue
-it save                  Save current issue
-it close                 Save any pending changes and close current issue
-it cancel                Cancel any pending changes and close current issue
-it edit [<id>]           Edit issue
-it find [<key> [<val>]]  Find issues with given key and value
-it blame [<id>]          Show 'git blame' for issue
-it edit [<id>]           Edit issue
-it status                Show status of current issue
-it attach | add          Attach file to current issue
-it todgrl                Export issues to Doggerel format
-it tojson                Export issues to JSON format`
+it help | usage              Show usage
+it init                      Initialize new issue tracker
+it new                       Create new issue
+it list [<key> [<val>]]      List issues, optionally filtering by key/value
+it ids [<key> [<val>]]       List ids, optionally filtering by key/value
+it show [<id(s)>]            Show issue
+it open <id>                 Open issue
+it save                      Save current issue
+it close                     Save any pending changes and close current issue
+it cancel                    Cancel any pending changes and close current issue
+it edit [<id>]               Edit issue
+it blame [<id>]              Show 'git blame' for issue
+it status                    Show status of current issue
+it attach | add [<file(s)>]  Attach file to current issue`
 
 var (
 	args = os.Args[1:]
@@ -45,7 +42,9 @@ func main() {
 		args = args[1:]
 	}
 	switch cmd {
-	case "", "-h", "-help", "--help", "help", "-u", "-usage", "--usage", "usage":
+	case "":
+		statusCmd()
+	case "-h", "-help", "--help", "help", "-u", "-usage", "--usage", "usage":
 		usageCmd()
 	case "init":
 		initCmd()
@@ -53,6 +52,8 @@ func main() {
 		newCmd()
 	case "list":
 		listCmd()
+	case "ids":
+		idsCmd()
 	case "show":
 		showCmd()
 	case "open":
@@ -63,22 +64,14 @@ func main() {
 		closeCmd()
 	case "cancel":
 		cancelCmd()
-	case "find":
-		findCmd()
 	case "set":
 		setCmd()
 	case "blame":
 		blameCmd()
 	case "edit":
 		editCmd()
-	case "status":
-		statusCmd()
 	case "attach", "add":
 		attachCmd()
-	case "todgrl":
-		dgrlCmd()
-	case "tojson":
-		jsonCmd()
 	default:
 		log.Fatalln(cmd + " is not a valid command")
 	}
@@ -100,31 +93,61 @@ func newCmd() {
 	if err != nil {
 		log.Fatalln("Error creating new issue")
 	}
-	fmt.Println(idStr(id))
+	fmt.Println(id)
 }
 
 func listCmd() {
 	verifyRepo()
+	key, val := "", ""
+	if len(args) > 0 {
+		key = args[0]
+	}
+	if len(args) > 1 {
+		val = args[1]
+	}
 	curId := it.CurrentIssue()
-	for _, id := range it.IssueIds() {
+	for _, id := range it.MatchingIssues(key, val) {
 		statusChar := ' '
 		if id == curId {
 			statusChar = '*'
+			if it.Dirty() {
+				statusChar = '!'
+			}
 		}
 		fmt.Printf("%c %s\n", statusChar, issueStatus(id))
 	}
 }
 
+func idsCmd() {
+	verifyRepo()
+	key, val := "", ""
+	if len(args) > 0 {
+		key = args[0]
+	}
+	if len(args) > 1 {
+		val = args[1]
+	}
+	for _, id := range it.MatchingIssues(key, val) {
+		fmt.Println(id)
+	}
+}
+
 func showCmd() {
 	verifyRepo()
-	id := ""
-	if len(args) > 0 {
-		id = args[0]
-		verifyIssue(id)
-		fmt.Printf("%s\n\n%s", idStr(id), it.IssueText(id))
-	} else {
-		fmt.Printf("%s\n\n%s", idStr(it.CurrentIssue()), it.WorkingIssueText())
+	ids := []string{}
+	switch {
+	case len(args) == 0:
+		ids = append(ids, it.CurrentIssue())
+	case args[0] == "all":
+		ids = it.IssueIds()
+	default:
+		ids = args
 	}
+	for i := range ids {
+		id := ids[i]
+		verifyIssue(id)
+	}
+	fmt.Print(it.ToDgrl(ids))
 }
 
 func openCmd() {
@@ -137,7 +160,6 @@ func openCmd() {
 	if err != nil {
 		log.Fatalln("Error opening issue " + id)
 	}
-	fmt.Println(idStr(id))
 }
 
 func saveCmd() {
@@ -154,21 +176,6 @@ func closeCmd() {
 func cancelCmd() {
 	verifyRepo()
 	it.Cancel()
-}
-
-func findCmd() {
-	verifyRepo()
-	key, val := "", ""
-	if len(args) > 0 {
-		key = args[0]
-	}
-	if len(args) > 1 {
-		val = args[1]
-	}
-	matches := it.MatchingIssues(key, val)
-	for _, id := range matches {
-		fmt.Println(id)
-	}
 }
 
 func setCmd() {
@@ -190,7 +197,7 @@ func blameCmd() {
 		id = it.CurrentIssue()
 	}
 	verifyIssue(id)
-	fmt.Printf("%s\n\n%s", idStr(id), it.Blame(id))
+	fmt.Print(it.Blame(id))
 }
 
 func editCmd() {
@@ -225,14 +232,13 @@ func editCmd() {
 }
 
 func statusCmd() {
-	id := ""
-	if len(args) > 0 {
-		id = args[0]
-	} else {
-		id = it.CurrentIssue()
+	verifyRepo()
+	id := it.CurrentIssue()
+	statusChar := ' '
+	if it.Dirty() {
+		statusChar = '!'
 	}
-	verifyIssue(id)
-	fmt.Println(issueStatus(id))
+	fmt.Printf("%c %s\n", statusChar, issueStatus(id))
 }
 
 func attachCmd() {
@@ -240,29 +246,20 @@ func attachCmd() {
 		log.Fatalln("You must specify a file to attach")
 	}
 	verifyRepo()
-	if it.AttachFile(args[0]) != nil {
-		log.Fatalln("Error attaching " + args[0])
+	for i := range args {
+		if it.AttachFile(args[i]) != nil {
+			log.Fatalln("Error attaching " + args[i])
+		}
 	}
 }
 
-func dgrlCmd() {
-	fmt.Print(it.ToDgrl())
-}
-
-func jsonCmd() {
-	fmt.Println(it.ToDgrl().ToJSON())
-}
-
 func issueStatus(id string) string {
+	verifyIssue(id)
 	id = gitit.FormatId(id)
 	status, _ := it.Value(id, "status")
 	summary, _ := it.Value(id, "summary")
 	priority, _ := it.Value(id, "priority")
 	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
-}
-
-func idStr(id string) string {
-	return "[" + gitit.FormatId(id) + "]"
 }
 
 func verifyRepo() {
