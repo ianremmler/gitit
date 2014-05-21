@@ -12,20 +12,21 @@ import (
 
 const usage = `usage:
 
-it help | usage              Show usage
-it init                      Initialize new issue tracker
-it new                       Create new issue
-it list [<key> [<val>]]      List issues, optionally filtering by key/value
-it ids [<key> [<val>]]       List ids, optionally filtering by key/value
-it show [<id(s)>]            Show issue
-it open <id>                 Open issue
-it save                      Save current issue
-it close                     Save any pending changes and close current issue
-it cancel                    Cancel any pending changes and close current issue
-it edit [<id>]               Edit issue
-it blame [<id>]              Show 'git blame' for issue
-it status                    Show status of current issue
-it attach | add [<file(s)>]  Attach file to current issue`
+spec: all | <id(s)> | with <key> [<val>]
+
+it [help | usage]      Show usage
+it state [<spec>]      Show issue state
+it init                Initialize new issue tracker
+it new                 Create new issue
+it id [<spec>]         List ids, optionally filtering by key/value
+it show [<spec>]       Show issue (default: current)
+it open <id>           Open issue
+it save                Save current issue
+it close               Save any pending changes and close current issue
+it cancel              Cancel any pending changes and close current issue
+it edit [<id>]         Edit issue (default: current)
+it blame [<id>]        Show 'git blame' for issue (default: current)
+it attach [<file(s)>]  Attach file to current issue`
 
 var (
 	args = os.Args[1:]
@@ -42,18 +43,16 @@ func main() {
 		args = args[1:]
 	}
 	switch cmd {
-	case "":
-		statusCmd()
-	case "-h", "-help", "--help", "help", "-u", "-usage", "--usage", "usage":
+	case "", "-h", "-help", "--help", "help", "-u", "-usage", "--usage", "usage":
 		usageCmd()
+	case "state":
+		stateCmd()
 	case "init":
 		initCmd()
 	case "new":
 		newCmd()
-	case "list":
-		listCmd()
-	case "ids":
-		idsCmd()
+	case "id":
+		idCmd()
 	case "show":
 		showCmd()
 	case "open":
@@ -70,10 +69,10 @@ func main() {
 		blameCmd()
 	case "edit":
 		editCmd()
-	case "attach", "add":
+	case "attach":
 		attachCmd()
 	default:
-		log.Fatalln(cmd + " is not a valid command")
+		log.Fatalln(cmd + " is not a valid command\n\n" + usage)
 	}
 }
 
@@ -83,7 +82,7 @@ func usageCmd() {
 
 func initCmd() {
 	if it.Init() != nil {
-		log.Fatalln("Error initializing issue tracker")
+		log.Fatalln("init: Error initializing issue tracker")
 	}
 }
 
@@ -91,22 +90,15 @@ func newCmd() {
 	verifyRepo()
 	id, err := it.NewIssue()
 	if err != nil {
-		log.Fatalln("Error creating new issue")
+		log.Fatalln("new: Error creating new issue")
 	}
 	fmt.Println(id)
 }
 
-func listCmd() {
+func stateCmd() {
 	verifyRepo()
-	key, val := "", ""
-	if len(args) > 0 {
-		key = args[0]
-	}
-	if len(args) > 1 {
-		val = args[1]
-	}
 	curId := it.CurrentIssue()
-	for _, id := range it.MatchingIssues(key, val) {
+	for _, id := range specIds(args) {
 		statusChar := ' '
 		if id == curId {
 			statusChar = '*'
@@ -118,33 +110,17 @@ func listCmd() {
 	}
 }
 
-func idsCmd() {
+func idCmd() {
 	verifyRepo()
-	key, val := "", ""
-	if len(args) > 0 {
-		key = args[0]
-	}
-	if len(args) > 1 {
-		val = args[1]
-	}
-	for _, id := range it.MatchingIssues(key, val) {
+	for _, id := range specIds(args) {
 		fmt.Println(id)
 	}
 }
 
 func showCmd() {
 	verifyRepo()
-	ids := []string{}
-	switch {
-	case len(args) == 0:
-		ids = append(ids, it.CurrentIssue())
-	case args[0] == "all":
-		ids = it.IssueIds()
-	default:
-		ids = args
-	}
-	for i := range ids {
-		id := ids[i]
+	ids := specIds(args)
+	for _, id := range ids {
 		verifyIssue(id)
 	}
 	fmt.Print(it.ToDgrl(ids))
@@ -152,13 +128,16 @@ func showCmd() {
 
 func openCmd() {
 	if len(args) == 0 {
-		log.Fatalln("You must specify an issue to open")
+		log.Fatalln("open: You must specify an issue to open")
 	}
 	verifyRepo()
+	if it.Dirty() {
+		log.Fatalln("open: Unsaved changes in currently open issue")
+	}
 	id := gitit.FormatId(args[0])
 	err := it.OpenIssue(id)
 	if err != nil {
-		log.Fatalln("Error opening issue " + id)
+		log.Fatalln("open: Error opening issue " + id)
 	}
 }
 
@@ -181,74 +160,61 @@ func cancelCmd() {
 func setCmd() {
 	verifyRepo()
 	if len(args) < 2 {
-		log.Fatalln("You must specify a key and value")
+		log.Fatalln("set: You must specify a key and value")
 	}
 	if !it.SetWorkingValue(args[0], args[1]) {
-		log.Fatalln("Error setting value")
+		log.Fatalln("set: Error setting value")
 	}
 }
 
 func blameCmd() {
 	verifyRepo()
-	id := ""
+	id := it.CurrentIssue()
 	if len(args) > 0 {
 		id = args[0]
-	} else {
-		id = it.CurrentIssue()
 	}
 	verifyIssue(id)
 	fmt.Print(it.Blame(id))
 }
 
 func editCmd() {
-	editor := os.Getenv("EDITOR")
+	editor := os.Getenv("VISUAL")
 	if editor == "" {
-		editor = os.Getenv("VISUAL")
+		editor = os.Getenv("EDITOR")
 	}
 	if editor == "" {
-		log.Fatalln("ERROR or VISUAL environment variable must be set")
+		log.Fatalln("VISUAL or EDITOR environment variable must be set")
 	}
 	verifyRepo()
-	id := ""
-	isCur := (len(args) == 0)
-	if isCur {
-		id = it.CurrentIssue()
-	} else {
+	id := it.CurrentIssue()
+	isCur := true
+	if len(args) > 0 {
 		id = gitit.FormatId(args[0])
+		isCur = false
 	}
 	verifyIssue(id)
 	if !isCur {
 		err := it.OpenIssue(id)
 		if err != nil {
-			log.Fatalln("Unable to open issue " + id)
+			log.Fatalln("edit: Unable to open issue " + id)
 		}
 	}
 	cmd := exec.Command(editor, it.IssueFilename())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalln(err)
 	}
-}
-
-func statusCmd() {
-	verifyRepo()
-	id := it.CurrentIssue()
-	statusChar := ' '
-	if it.Dirty() {
-		statusChar = '!'
-	}
-	fmt.Printf("%c %s\n", statusChar, issueStatus(id))
 }
 
 func attachCmd() {
 	if len(args) == 0 {
-		log.Fatalln("You must specify a file to attach")
+		log.Fatalln("attach: You must specify a file to attach")
 	}
 	verifyRepo()
 	for i := range args {
 		if it.AttachFile(args[i]) != nil {
-			log.Fatalln("Error attaching " + args[i])
+			log.Fatalln("attach: Error attaching " + args[i])
 		}
 	}
 }
@@ -272,4 +238,30 @@ func verifyIssue(id string) {
 	if !it.ValidIssue(id) {
 		log.Fatalln(id + " is not a valid issue")
 	}
+}
+
+func matchIds(kv []string) []string {
+	key, val := "", ""
+	if len(kv) > 0 {
+		key = kv[0]
+	}
+	if len(kv) > 1 {
+		val = kv[1]
+	}
+	return it.MatchingIssues(key, val)
+}
+
+func specIds(args []string) []string {
+	ids := []string{}
+	switch {
+	case len(args) == 0:
+		ids = append(ids, it.CurrentIssue())
+	case args[0] == "with":
+		ids = matchIds(args[1:])
+	case args[0] == "all":
+		ids = it.IssueIds()
+	default:
+		ids = args
+	}
+	return ids
 }
