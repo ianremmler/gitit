@@ -113,7 +113,9 @@ func stateCmd() {
 func idCmd() {
 	verifyRepo()
 	for _, id := range specIds(args) {
-		fmt.Println(id)
+		if it.ValidIssue(id) {
+			fmt.Println(id)
+		}
 	}
 }
 
