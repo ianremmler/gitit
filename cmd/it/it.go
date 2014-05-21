@@ -106,7 +106,7 @@ func stateCmd() {
 				statusChar = '!'
 			}
 		}
-		fmt.Printf("%c %s\n", statusChar, issueStatus(id))
+		fmt.Printf("%c %s\n", statusChar, stateSummary(id))
 	}
 }
 
@@ -219,13 +219,15 @@ func attachCmd() {
 	}
 }
 
-func issueStatus(id string) string {
+func stateSummary(id string) string {
 	verifyIssue(id)
 	id = gitit.FormatId(id)
 	status, _ := it.Value(id, "status")
-	summary, _ := it.Value(id, "summary")
+	typ, _ := it.Value(id, "type")
 	priority, _ := it.Value(id, "priority")
-	return fmt.Sprintf("%s %-8s %-8s %s", id, status, priority, summary)
+	assigned, _ := it.Value(id, "assigned")
+	summary, _ := it.Value(id, "summary")
+	return fmt.Sprintf("%s %-7s %-7s %-7s %-7s %s", id, status, typ, priority, assigned, summary)
 }
 
 func verifyRepo() {
