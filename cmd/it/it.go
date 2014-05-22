@@ -139,7 +139,7 @@ func openCmd() {
 	id := gitit.FormatId(args[0])
 	err := it.OpenIssue(id)
 	if err != nil {
-		log.Fatalln("open: Error opening issue " + id)
+		log.Fatalln("open: Error opening issue " + args[0])
 	}
 }
 
